@@ -52,3 +52,4 @@ if (process.env.NODE_ENV !== 'production' || process.env.RENDER || process.env.R
 }
 
 export default app;
+module.exports = app;

@@ -2,13 +2,13 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import { authenticate } from '../middlewares/auth';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 router.post('/', authenticate, upload.single('image'), async (req: Request, res: Response): Promise<void> => {
@@ -20,7 +20,7 @@ router.post('/', authenticate, upload.single('image'), async (req: Request, res:
     }
 
     const fileExt = file.originalname.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `${req.user!.id}/${fileName}`;
 
     const { data, error } = await supabase
