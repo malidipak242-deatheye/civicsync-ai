@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { createComplaint, getComplaints, updateComplaintStatus } from '../controllers/complaint.controller';
 import { authenticate, authorize } from '../middlewares/auth';
+import { validate } from '../middlewares/validate';
+import { createComplaintSchema, updateComplaintStatusSchema } from '../validators/complaint.validator';
 import { prisma } from '../index';
 import { Role } from '@prisma/client';
 
@@ -27,9 +29,10 @@ router.use(authenticate);
 router.get('/', getComplaints);
 
 // Only citizens can submit new complaints
-router.post('/', authorize([Role.CITIZEN]), createComplaint);
+router.post('/', authorize([Role.CITIZEN]), validate(createComplaintSchema), createComplaint);
 
 // Workers and Admins can update statuses
-router.patch('/:id/status', authorize([Role.WORKER, Role.DEPARTMENT_MANAGER, Role.SUPER_ADMIN]), updateComplaintStatus);
+router.patch('/:id/status', authorize([Role.WORKER, Role.DEPARTMENT_MANAGER, Role.SUPER_ADMIN]), validate(updateComplaintStatusSchema), updateComplaintStatus);
+
 
 export default router;

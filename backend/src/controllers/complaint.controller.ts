@@ -10,7 +10,7 @@ export const createComplaint = async (req: Request, res: Response): Promise<void
 
     // Optional: Call Gemini API if an image URL is provided and user hasn't overridden AI
     let aiData = null;
-    if (imageUrl) {
+    if (imageUrl && (!title || !category)) {
       aiData = await analyzeComplaintImage(imageUrl);
     }
 

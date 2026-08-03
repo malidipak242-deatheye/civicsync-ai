@@ -46,6 +46,7 @@ export default function ReportPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -77,6 +78,7 @@ export default function ReportPage() {
     reader.onload = async (evt) => {
       const base64Full = evt.target?.result as string;
       setPreviewUrl(base64Full);
+      setSelectedFile(file);
 
       const base64 = base64Full.split(",")[1];
       const mimeType = file.type || "image/jpeg";
@@ -125,6 +127,20 @@ export default function ReportPage() {
     setSubmitError(null);
     setIsSubmitting(true);
     try {
+      let imageUrl = undefined;
+      
+      if (selectedFile) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('image', selectedFile);
+        
+        const uploadRes = await api.post('/upload', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        imageUrl = uploadRes.data.imageUrl;
+      }
+
       await api.post("/complaints", {
         title: formData.title,
         description: formData.description,
@@ -133,6 +149,7 @@ export default function ReportPage() {
         latitude: formData.lat,
         longitude: formData.lng,
         address: formData.address || `${formData.lat.toFixed(4)}, ${formData.lng.toFixed(4)}`,
+        imageUrl,
       });
       setIsSubmitted(true);
       setStep(5);
@@ -140,8 +157,7 @@ export default function ReportPage() {
       if (err?.response?.status === 401) {
         setSubmitError("Please log in to submit a complaint.");
       } else {
-        setIsSubmitted(true); // Demo fallback
-        setStep(5);
+        setSubmitError("Failed to submit report. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -151,6 +167,7 @@ export default function ReportPage() {
   const resetForm = () => {
     setIsSubmitted(false);
     setPreviewUrl(null);
+    setSelectedFile(null);
     setAiApplied(false);
     setAiError(null);
     setSubmitError(null);
