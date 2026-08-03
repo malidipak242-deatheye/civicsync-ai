@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import {
   Users, FileText, CheckCircle, Clock, Loader2, Search,
   MapPin, LogOut, AlertCircle, RefreshCw, Shield, Filter,
@@ -33,6 +33,16 @@ const PRIORITY_COLORS: Record<string, string> = {
   CRITICAL: "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400",
 };
 
+const STATUS_COLORS_HEX: Record<string, string> = {
+  SUBMITTED: "#64748b",
+  VERIFIED: "#a855f7",
+  ASSIGNED: "#60a5fa",
+  IN_PROGRESS: "#2563eb",
+  RESOLVED: "#10b981",
+  CLOSED: "#475569",
+  REJECTED: "#ef4444",
+};
+
 const CATEGORY_CHART_DATA = [
   { name: "Potholes", value: 0 },
   { name: "Garbage", value: 0 },
@@ -53,6 +63,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [activeTab, setActiveTab] = useState<"overview" | "complaints">("overview");
   const [chartData, setChartData] = useState(CATEGORY_CHART_DATA);
+  const [statusChartData, setStatusChartData] = useState<{name: string, value: number}[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Auth guard
@@ -93,6 +104,17 @@ export default function AdminDashboard() {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 6)
             .map(([name, value]) => ({ name, value }))
+        );
+      }
+
+      const statusMap: Record<string, number> = {};
+      data.forEach((c: any) => {
+        const stat = c.status || "SUBMITTED";
+        statusMap[stat] = (statusMap[stat] || 0) + 1;
+      });
+      if (Object.keys(statusMap).length > 0) {
+        setStatusChartData(
+          Object.entries(statusMap).map(([name, value]) => ({ name, value }))
         );
       }
     } catch (err) {
@@ -316,6 +338,53 @@ export default function AdminDashboard() {
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-2xl">
                         <BarChart2 className="w-8 h-8 mb-2 opacity-50" />
+                        <p className="text-sm font-medium">No analytical data available.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Distribution Chart Section */}
+                <div className="lg:col-span-1 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-bold">Status Overview</h3>
+                      <p className="text-sm text-muted-foreground">Current states</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-h-[300px]">
+                    {statusChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={statusChartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {statusChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={STATUS_COLORS_HEX[entry.name] || "#8884d8"} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{
+                              background: "hsl(var(--popover))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "16px",
+                              color: "hsl(var(--popover-foreground))",
+                              fontWeight: "bold"
+                            }}
+                          />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+                        <Activity className="w-8 h-8 mb-2 opacity-50" />
                         <p className="text-sm font-medium">No analytical data available.</p>
                       </div>
                     )}
