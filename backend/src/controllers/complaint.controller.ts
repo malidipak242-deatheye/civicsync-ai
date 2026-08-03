@@ -106,3 +106,31 @@ export const updateComplaintStatus = async (req: Request, res: Response): Promis
     res.status(500).json({ error: 'Failed to update status' });
   }
 };
+
+export const assignComplaint = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id);
+    const workerId = String(req.body.workerId);
+    const userId = req.user!.id;
+
+    const complaint = await prisma.complaint.update({
+      where: { id },
+      data: {
+        workerId,
+        status: ComplaintStatus.ASSIGNED,
+        statusHistory: {
+          create: {
+            status: ComplaintStatus.ASSIGNED,
+            notes: 'Assigned to worker',
+            changedById: userId
+          }
+        }
+      }
+    });
+
+    res.json(complaint);
+  } catch (error) {
+    console.error('Assign complaint error:', error);
+    res.status(500).json({ error: 'Failed to assign complaint' });
+  }
+};

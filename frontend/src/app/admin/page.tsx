@@ -46,6 +46,7 @@ export default function AdminDashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [stats, setStats] = useState({ total: 0, resolved: 0, inProgress: 0, submitted: 0, resolutionRate: 0 });
   const [complaints, setComplaints] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -68,12 +69,14 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      const [statsRes, complaintsRes] = await Promise.all([
+      const [statsRes, complaintsRes, workersRes] = await Promise.all([
         api.get("/complaints/stats").catch(() => ({ data: null })),
         api.get("/complaints").catch(() => ({ data: [] })),
+        api.get("/users/workers").catch(() => ({ data: [] }))
       ]);
 
       if (statsRes.data) setStats(statsRes.data);
+      if (workersRes.data) setWorkers(workersRes.data);
 
       const data = complaintsRes.data?.complaints || complaintsRes.data || [];
       setComplaints(data);
@@ -97,6 +100,16 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
       setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  const handleAssignWorker = async (complaintId: string, workerId: string) => {
+    try {
+      await api.patch(`/complaints/${complaintId}/assign`, { workerId });
+      fetchData(); // Refresh the data to show updated status
+    } catch (err) {
+      console.error("Failed to assign worker", err);
+      alert("Failed to assign worker. Please try again.");
     }
   };
 
@@ -393,7 +406,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="divide-y divide-border">
                     {filtered.map((c) => (
-                      <AdminComplaintRow key={c.id} complaint={c} />
+                      <AdminComplaintRow key={c.id} complaint={c} workers={workers} onAssign={handleAssignWorker} />
                     ))}
                   </div>
                 )}
@@ -406,7 +419,7 @@ export default function AdminDashboard() {
   );
 }
 
-function AdminComplaintRow({ complaint }: { complaint: any }) {
+function AdminComplaintRow({ complaint, workers, onAssign }: { complaint: any, workers: any[], onAssign: (id: string, workerId: string) => void }) {
   const date = new Date(complaint.createdAt).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -447,10 +460,27 @@ function AdminComplaintRow({ complaint }: { complaint: any }) {
       </div>
       
       <div className="flex items-center gap-3 sm:pl-4 sm:border-l border-border">
-        {complaint.citizen?.name && (
-          <div className="hidden lg:flex flex-col items-end text-right">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Reported By</span>
-            <span className="text-sm font-semibold">{complaint.citizen.name}</span>
+        {complaint.workerId ? (
+          <div className="hidden lg:flex flex-col items-end text-right mr-2">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Assigned To</span>
+            <span className="text-sm font-semibold">{complaint.worker?.name || 'Worker'}</span>
+          </div>
+        ) : (
+          <div className="hidden lg:flex items-center gap-2 mr-2">
+            <select
+              className="h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              onChange={(e) => {
+                if (e.target.value) {
+                  onAssign(complaint.id, e.target.value);
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>Assign Worker...</option>
+              {workers.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
           </div>
         )}
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-background border border-transparent hover:border-border transition-all opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0">

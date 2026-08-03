@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createComplaint, getComplaints, updateComplaintStatus } from '../controllers/complaint.controller';
+import { createComplaint, getComplaints, updateComplaintStatus, assignComplaint } from '../controllers/complaint.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
 import { createComplaintSchema, updateComplaintStatusSchema } from '../validators/complaint.validator';
@@ -33,6 +33,9 @@ router.post('/', authorize([Role.CITIZEN]), validate(createComplaintSchema), cre
 
 // Workers and Admins can update statuses
 router.patch('/:id/status', authorize([Role.WORKER, Role.DEPARTMENT_MANAGER, Role.SUPER_ADMIN]), validate(updateComplaintStatusSchema), updateComplaintStatus);
+
+// Admins and Managers can assign a worker
+router.patch('/:id/assign', authorize([Role.DEPARTMENT_MANAGER, Role.SUPER_ADMIN]), assignComplaint);
 
 
 export default router;
