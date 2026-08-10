@@ -37,7 +37,13 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Login failed. Please check your credentials.");
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError("Request timed out. Please check your connection or try again later.");
+      } else if (!err.response) {
+        setError("Network error. The server may be unreachable.");
+      } else {
+        setError(err?.response?.data?.error || "Login failed. Please check your credentials.");
+      }
     } finally {
       setIsLoading(false);
     }

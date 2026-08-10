@@ -37,7 +37,13 @@ export default function RegisterPage() {
       await register(name.trim(), email, password, phone || undefined);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Registration failed. Please try again.");
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError("Request timed out. Please check your connection or try again later.");
+      } else if (!err.response) {
+        setError("Network error. The server may be unreachable.");
+      } else {
+        setError(err?.response?.data?.error || "Registration failed. Please check your details.");
+      }
     } finally {
       setIsLoading(false);
     }
