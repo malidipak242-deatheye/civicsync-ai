@@ -69,8 +69,8 @@ export default function ReportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      setAiError("File too large. Please choose an image under 10MB.");
+    if (file.size > 4.5 * 1024 * 1024) {
+      setAiError("File too large. Please choose an image under 4.5MB.");
       return;
     }
 
