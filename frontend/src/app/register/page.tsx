@@ -45,7 +45,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-5 py-12 relative overflow-hidden">
-      
+
       {/* Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none" />
@@ -63,9 +63,9 @@ export default function RegisterPage() {
       </motion.div>
 
       {/* Card */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20, scale: 0.95 }} 
-        animate={{ opacity: 1, y: 0, scale: 1 }} 
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.1 }}
         className="w-full max-w-sm bg-card/80 border border-border rounded-[2.5rem] shadow-2xl backdrop-blur-3xl p-8 relative z-10"
       >
@@ -89,7 +89,7 @@ export default function RegisterPage() {
             </Label>
             <Input
               id="name"
-              placeholder="Rahul Deshmukh"
+              placeholder="Harish Deshmukh"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
