@@ -32,8 +32,21 @@ router.post('/', authenticate, upload.single('image'), async (req: Request, res:
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
-      res.status(500).json({ error: 'Failed to upload image' });
+      const safeError = {
+        message: error.message,
+        name: error.name || 'StorageApiError',
+        code: (error as any).code || 'UNKNOWN',
+        statusCode: (error as any).statusCode || 500,
+      };
+      
+      console.error('[Upload Error]:', safeError);
+      
+      res.status(safeError.statusCode === '415' || safeError.statusCode === 400 ? 400 : 500).json({ 
+        error: 'Failed to upload image', 
+        details: safeError.message,
+        code: safeError.code,
+        status: safeError.statusCode
+      });
       return;
     }
 
