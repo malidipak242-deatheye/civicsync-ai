@@ -65,6 +65,23 @@ export default function ReportPage() {
     }
   }, [user, authLoading, router]);
 
+  // Transition from Step 3 to 4 when AI analysis is complete
+  useEffect(() => {
+    if (step === 3 && !isAnalyzing) {
+      setStep(4);
+    }
+  }, [step, isAnalyzing]);
+
+  const handleConfirmLocation = () => {
+    if (!previewUrl) {
+      setStep(4);
+    } else if (isAnalyzing) {
+      setStep(3);
+    } else {
+      setStep(4);
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -86,7 +103,7 @@ export default function ReportPage() {
       setIsAnalyzing(true);
       setAiError(null);
       setAiApplied(false);
-      setStep(3); // Jump to AI analyzing step
+      setStep(2); // Move to Location step while AI analyzes in background
 
       try {
         const res = await api.post("/ai/analyze", { imageBase64: base64, mimeType });
@@ -100,14 +117,11 @@ export default function ReportPage() {
             priority: data.priority || prev.priority,
           }));
           setAiApplied(true);
-          setTimeout(() => setStep(4), 1500); // Move to review step after success
         } else {
           setAiError("Could not detect details. Please fill manually.");
-          setTimeout(() => setStep(4), 1500);
         }
       } catch {
         setAiError("AI analysis unavailable. Please fill manually.");
-        setTimeout(() => setStep(4), 1500);
       } finally {
         setIsAnalyzing(false);
       }
@@ -288,7 +302,7 @@ export default function ReportPage() {
                 />
               </div>
 
-              <Button onClick={() => previewUrl ? setStep(3) : nextStep()} className="w-full h-14 rounded-full font-bold shadow-lg shadow-primary/20 gap-2 text-base">
+              <Button onClick={handleConfirmLocation} className="w-full h-14 rounded-full font-bold shadow-lg shadow-primary/20 gap-2 text-base">
                 Confirm Location <ArrowRight className="w-5 h-5" />
               </Button>
             </motion.section>
