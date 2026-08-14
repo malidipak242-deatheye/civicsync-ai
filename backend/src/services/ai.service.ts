@@ -1,5 +1,3 @@
-import { GoogleGenAI, Type } from '@google/genai';
-
 export interface AIAnalysisResult {
   category: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -14,10 +12,10 @@ export const analyzeComplaintImage = async (
   imageData: string, // base64 string or URL
   mimeType: string = 'image/jpeg'
 ): Promise<AIAnalysisResult | null> => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey.includes('your_') || apiKey === '') {
-    console.warn('⚠️  GEMINI_API_KEY is not set or invalid. Skipping AI analysis.');
+    console.warn('⚠️  OPENROUTER_API_KEY is not set or invalid. Skipping AI analysis.');
     return null;
   }
 
@@ -25,8 +23,6 @@ export const analyzeComplaintImage = async (
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const ai = new GoogleGenAI({ apiKey });
-
       const prompt = `You are a civic issue classifier for an Indian municipal corporation. Analyze this image of a reported public infrastructure problem.
 
 Classify it into EXACTLY ONE category:
@@ -39,51 +35,54 @@ Assign a priority:
 - LOW: Minor issue (faded markings, small cracks, minor debris)
 
 Return a short title (under 10 words) and a 1-2 sentence summary in English.
-Confidence should be between 0.0 and 1.0.`;
+Confidence should be between 0.0 and 1.0. 
+IMPORTANT: You must return the output STRICTLY as a valid JSON object with the exact keys: "category", "priority", "confidence", "title", "summary".`;
 
       const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
-
-      let contents: any[];
-
+      
+      let imageUrlObj;
       if (isUrl) {
-        const res = await fetch(imageData);
-        if (!res.ok) throw new Error(`Failed to fetch image URL: ${res.status}`);
-        const buffer = await res.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString('base64');
-        contents = [
-          { text: prompt },
-          { inlineData: { mimeType, data: base64 } }
-        ];
+        imageUrlObj = { url: imageData };
       } else {
-        // Strip data URL prefix if present
         const cleanBase64 = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-        contents = [
-          { text: prompt },
-          { inlineData: { mimeType, data: cleanBase64 } }
-        ];
+        imageUrlObj = { url: `data:${mimeType};base64,${cleanBase64}` };
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              category: { type: Type.STRING },
-              priority: { type: Type.STRING },
-              confidence: { type: Type.NUMBER },
-              title: { type: Type.STRING },
-              summary: { type: Type.STRING }
-            },
-            required: ['category', 'priority', 'confidence', 'title', 'summary']
+      const payload = {
+        // Use a highly capable, fast, and cheap vision model available on OpenRouter
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: imageUrlObj }
+            ]
           }
-        }
+        ],
+        response_format: { type: 'json_object' }
+      };
+
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://civicsync-api.vercel.app',
+          'X-Title': 'CivicSync AI'
+        },
+        body: JSON.stringify(payload)
       });
 
-      if (response.text) {
-        const parsed = JSON.parse(response.text) as AIAnalysisResult;
+      if (!res.ok) {
+        throw new Error(`OpenRouter API responded with status: ${res.status} - ${await res.text()}`);
+      }
+
+      const responseData = await res.json();
+      const contentText = responseData.choices?.[0]?.message?.content;
+      
+      if (contentText) {
+        const parsed = JSON.parse(contentText) as AIAnalysisResult;
 
         // Validate the response
         const validCategories = ['Garbage', 'Pothole', 'Street Light', 'Water Leakage', 'Drainage', 'Road Damage', 'Tree Fallen', 'Dead Animal', 'Stray Animal', 'Illegal Dumping', 'Public Toilet', 'Other'];
