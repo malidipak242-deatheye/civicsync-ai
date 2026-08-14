@@ -211,11 +211,7 @@ export default function ReportPage() {
         const formDataUpload = new FormData();
         formDataUpload.append('image', selectedFile);
         
-        const uploadRes = await api.post('/upload', formDataUpload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const uploadRes = await api.post('/upload', formDataUpload);
         imageUrl = uploadRes.data.imageUrl;
       }
 
