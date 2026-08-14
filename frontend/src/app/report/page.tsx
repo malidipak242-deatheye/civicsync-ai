@@ -35,6 +35,63 @@ const PRIORITY_COLORS: Record<string, string> = {
   CRITICAL: "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400",
 };
 
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1800;
+        const MAX_HEIGHT = 1800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(newFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.8
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export default function ReportPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -47,7 +104,8 @@ export default function ReportPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -86,47 +144,53 @@ export default function ReportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4.5 * 1024 * 1024) {
-      setAiError("File too large. Please choose an image under 4.5MB.");
-      return;
-    }
+    e.target.value = "";
 
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const base64Full = evt.target?.result as string;
-      setPreviewUrl(base64Full);
-      setSelectedFile(file);
-
-      const base64 = base64Full.split(",")[1];
-      const mimeType = file.type || "image/jpeg";
-
+    try {
       setIsAnalyzing(true);
       setAiError(null);
       setAiApplied(false);
-      setStep(2); // Move to Location step while AI analyzes in background
+      
+      setPreviewUrl(URL.createObjectURL(file));
+      setStep(2);
 
-      try {
-        const res = await api.post("/ai/analyze", { imageBase64: base64, mimeType });
-        const data = res.data?.data;
-        if (data) {
-          setFormData((prev) => ({
-            ...prev,
-            title: data.title || prev.title,
-            description: data.summary || prev.description,
-            category: data.category || prev.category,
-            priority: data.priority || prev.priority,
-          }));
-          setAiApplied(true);
-        } else {
-          setAiError("Could not detect details. Please fill manually.");
+      const compressedFile = await compressImage(file);
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const base64Full = evt.target?.result as string;
+        setPreviewUrl(base64Full);
+        setSelectedFile(compressedFile);
+
+        const base64 = base64Full.split(",")[1];
+        const mimeType = compressedFile.type || "image/jpeg";
+
+        try {
+          const res = await api.post("/ai/analyze", { imageBase64: base64, mimeType });
+          const data = res.data?.data;
+          if (data) {
+            setFormData((prev) => ({
+              ...prev,
+              title: data.title || prev.title,
+              description: data.summary || prev.description,
+              category: data.category || prev.category,
+              priority: data.priority || prev.priority,
+            }));
+            setAiApplied(true);
+          } else {
+            setAiError("Could not detect details. Please fill manually.");
+          }
+        } catch {
+          setAiError("AI analysis unavailable. Please fill manually.");
+        } finally {
+          setIsAnalyzing(false);
         }
-      } catch {
-        setAiError("AI analysis unavailable. Please fill manually.");
-      } finally {
-        setIsAnalyzing(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (err) {
+      setAiError("Failed to process image. Please try again.");
+      setIsAnalyzing(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -182,7 +246,8 @@ export default function ReportPage() {
     setAiError(null);
     setSubmitError(null);
     setFormData({ title: "", description: "", category: "", priority: "MEDIUM", lat: 21.0425, lng: 75.0592, address: "" });
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
     setStep(1);
   };
 
@@ -245,24 +310,45 @@ export default function ReportPage() {
                 <p className="text-muted-foreground">Take a clear picture of the issue.</p>
               </div>
 
-              <div
-                className="relative w-full h-72 rounded-[2rem] border-2 border-dashed border-border bg-card hover:border-primary/50 transition-all cursor-pointer overflow-hidden group shadow-sm flex flex-col items-center justify-center"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-                <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 group-hover:bg-primary/10">
-                  <UploadCloud className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                <div
+                  className="relative w-full h-48 rounded-[2rem] border-2 border-dashed border-border bg-card hover:border-primary/50 transition-all cursor-pointer overflow-hidden group shadow-sm flex flex-col items-center justify-center"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 group-hover:bg-primary/10">
+                    <Camera className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <span className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">Take Photo</span>
+                  <span className="text-xs text-muted-foreground">Using Camera</span>
                 </div>
-                <span className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">Tap to Upload</span>
-                <span className="text-sm text-muted-foreground">Camera or Gallery</span>
+
+                <div
+                  className="relative w-full h-48 rounded-[2rem] border-2 border-dashed border-border bg-card hover:border-primary/50 transition-all cursor-pointer overflow-hidden group shadow-sm flex flex-col items-center justify-center"
+                  onClick={() => galleryInputRef.current?.click()}
+                >
+                  <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 group-hover:bg-primary/10">
+                    <UploadCloud className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <span className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">Upload Photo</span>
+                  <span className="text-xs text-muted-foreground">From Gallery</span>
+                </div>
               </div>
+
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
               
               <div className="mt-8">
                 <Button variant="outline" className="w-full rounded-full h-14 font-semibold text-base border-border" onClick={() => { setPreviewUrl(null); nextStep(); }}>
