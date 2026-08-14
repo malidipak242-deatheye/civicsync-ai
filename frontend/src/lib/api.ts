@@ -18,7 +18,12 @@ api.interceptors.request.use(
     }
     
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      // In Axios >= 1.x, headers is an AxiosHeaders object, so we must use .delete()
+      if (config.headers && typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else {
+        delete config.headers['Content-Type'];
+      }
     }
     
     return config;
