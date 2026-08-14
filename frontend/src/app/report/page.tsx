@@ -229,9 +229,11 @@ export default function ReportPage() {
       setStep(5);
     } catch (err: any) {
       if (err?.response?.status === 401) {
-        setSubmitError("Please log in to submit a complaint.");
+        localStorage.removeItem("civicsync_token");
+        setSubmitError(err?.response?.data?.error || "Your session has expired. Please log in again.");
+        setTimeout(() => router.push("/login"), 2000);
       } else {
-        setSubmitError("Failed to submit report. Please try again.");
+        setSubmitError(err?.response?.data?.error || "Failed to submit report. Please try again.");
       }
     } finally {
       setIsSubmitting(false);

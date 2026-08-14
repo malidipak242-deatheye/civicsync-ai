@@ -35,9 +35,19 @@ export const createComplaint = async (req: Request, res: Response): Promise<void
     });
 
     res.status(201).json(complaint);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create complaint error:', error);
-    res.status(500).json({ error: 'Failed to create complaint' });
+    
+    // Handle Prisma foreign key constraint failure (e.g. citizenId doesn't exist)
+    if (error.code === 'P2003') {
+      res.status(401).json({ error: 'User session invalid or user not found. Please log in again.' });
+      return;
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to create complaint', 
+      details: error.message || 'Unknown database error' 
+    });
   }
 };
 
