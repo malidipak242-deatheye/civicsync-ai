@@ -6,7 +6,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
-  timeout: 15000,
+  timeout: 60000, // Increased to 60s to accommodate long-running Gemini AI requests
 });
 
 // Attach JWT token from localStorage on every request
@@ -17,7 +17,14 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    if (config.data instanceof FormData) {
+    // Robust FormData check for production/minified environments
+    const isFormData = config.data && (
+      config.data instanceof FormData || 
+      config.data.constructor?.name === 'FormData' || 
+      typeof config.data.append === 'function'
+    );
+    
+    if (isFormData) {
       // In Axios >= 1.x, headers is an AxiosHeaders object, so we must use .delete()
       if (config.headers && typeof config.headers.delete === 'function') {
         config.headers.delete('Content-Type');
