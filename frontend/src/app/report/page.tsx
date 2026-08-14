@@ -306,32 +306,34 @@ export default function ReportPage() {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
                   <Camera className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Snap a Photo</h2>
-                <p className="text-muted-foreground">Take a clear picture of the issue.</p>
+                <h2 className="text-2xl font-bold mb-2">Add Photo</h2>
+                <p className="text-muted-foreground">Take or upload a picture of the issue.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                <div
-                  className="relative w-full h-48 rounded-[2rem] border-2 border-dashed border-border bg-card hover:border-primary/50 transition-all cursor-pointer overflow-hidden group shadow-sm flex flex-col items-center justify-center"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 group-hover:bg-primary/10">
-                    <Camera className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                  <span className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">Take Photo</span>
-                  <span className="text-xs text-muted-foreground">Using Camera</span>
+              <div className="bg-card border-2 border-dashed border-border rounded-[2rem] p-6 w-full flex flex-col items-center justify-center shadow-sm">
+                
+                <div className="w-full space-y-4">
+                  <Button 
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="w-full h-16 rounded-2xl flex items-center justify-center gap-3 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-bold shadow-lg shadow-primary/20"
+                  >
+                    <Camera className="w-6 h-6" />
+                    Take Photo
+                  </Button>
+
+                  <Button 
+                    onClick={() => galleryInputRef.current?.click()}
+                    variant="outline"
+                    className="w-full h-16 rounded-2xl flex items-center justify-center gap-3 border-border hover:bg-accent text-foreground text-lg font-bold shadow-sm"
+                  >
+                    <UploadCloud className="w-6 h-6" />
+                    Upload from Gallery
+                  </Button>
                 </div>
 
-                <div
-                  className="relative w-full h-48 rounded-[2rem] border-2 border-dashed border-border bg-card hover:border-primary/50 transition-all cursor-pointer overflow-hidden group shadow-sm flex flex-col items-center justify-center"
-                  onClick={() => galleryInputRef.current?.click()}
-                >
-                  <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 group-hover:bg-primary/10">
-                    <UploadCloud className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                  <span className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">Upload Photo</span>
-                  <span className="text-xs text-muted-foreground">From Gallery</span>
-                </div>
+                <p className="text-sm text-muted-foreground mt-6 font-medium">
+                  You can upload JPG/PNG
+                </p>
               </div>
 
               <input
